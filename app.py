@@ -4,6 +4,15 @@ from openai import OpenAI
 
 app = Flask(__name__)
 
+endpoint = os.getenv('OpenAI_ENDPOINT')
+model_name = os.getenv('OpenAI_DEPLOY_NAME')
+subscription_key = os.getenv('OpenAI_API_KEY')
+
+# AIクライアントの初期化
+client = AzureOpenAI(
+    api_version="2024-12-01-preview",
+    azure_endpoint=endpoint,
+    api_key=subscription_key,
 # 1. 中韓字典 (10項資料)
 zh_ko_dict = {
     "你好": "안녕하세요",
@@ -54,8 +63,18 @@ def ask():
             answer = zh_en_dict.get(question)
 
         # 找不到資料時的提示
-        if not answer and question:
-            answer = "抱歉，找不到此詞彙的相關資料。"
+      if not answer and question:
+            try:
+                response = client.chat.completions.create(
+                    model=model_name,
+                    messages=[
+                        {"role": "user", "content": f"請翻譯「{question}」並簡短解釋。"}
+                    ],
+                    max_tokens=100
+                )
+                answer = response.choices[0].message.content.strip()
+            except Exception as e:
+                answer = f"AIエラー: {str(e)}"
                 
     return render_template('ask.html', question=question, answer=answer, dict_type=dict_type)
 
